@@ -1,0 +1,22 @@
+# Arquivos de Build/Binários
+[Bb]in/
+[Oo]bj/
+*.pdb
+*.suo
+
+# Pacotes NuGet
+.nuget/
+!/.nuget/NuGet.Config
+!/.nuget/NuGet.exe
+!/.nuget/NuGet.targets
+
+# Visual Studio e IDEs
+*.user
+*.config.user
+*.resharper
+*.vs/
+*.*proj.user
+
+# Docker
+!**/Dockerfile
+!**/.dockerignore
