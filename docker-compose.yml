@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # --- BANCO DE DADOS: IDENTIDADE ---
+  db_identidade:
+    image: mysql:8.0
+    container_name: db_identidade
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_segura
+      MYSQL_DATABASE: db_identidade
+    ports:
+      - "3306:3306"
+    volumes:
+      - identidade_data:/var/lib/mysql
+
+  # --- BANCO DE DADOS: CATÁLOGO ---
+  db_catalogo:
+    image: mysql:8.0
+    container_name: db_catalogo
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_segura
+      MYSQL_DATABASE: db_catalogo
+    ports:
+      - "3307:3306" # Porta externa 3307
+    volumes:
+      - catalogo_data:/var/lib/mysql
+      
+  # --- BANCO DE DADOS: PEDIDOS ---
+  db_pedidos:
+    image: mysql:8.0
+    container_name: db_pedidos
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_segura
+      MYSQL_DATABASE: db_pedidos
+    ports:
+      - "3308:3306" # Porta externa 3308
+    volumes:
+      - pedidos_data:/var/lib/mysql
+
+  # --- MICROSSERVIÇO DE IDENTIDADE ---
+  identidade_api:
+    build:
+      context: .
+      dockerfile: src/Identidade/Identidade.Api/Dockerfile
+    container_name: identidade_api
+    depends_on:
+      - db_identidade
+    environment:
+      DB_CONNECTION_STRING: "Server=db_identidade;Database=db_identidade;User=root;Password=root_password_segura;"
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5001:8080" # Porta da API
+    restart: always
+
+  # --- MICROSSERVIÇO DE CATÁLOGO ---
+  catalogo_api:
+    build:
+      context: .
+      dockerfile: src/Catalogo/Catalogo.Api/Dockerfile
+    container_name: catalogo_api
+    depends_on:
+      - db_catalogo
+      - identidade_api
+    environment:
+      DB_CONNECTION_STRING: "Server=db_catalogo;Database=db_catalogo;User=root;Password=root_password_segura;"
+      IDENTITY_API_URL: "http://identidade_api:8080"
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5002:8080"
+    restart: always
+
+  # --- MICROSSERVIÇO DE PEDIDOS ---
+  pedidos_api:
+    build:
+      context: .
+      dockerfile: src/Pedidos/Pedidos.Api/Dockerfile
+    container_name: pedidos_api
+    depends_on:
+      - db_pedidos
+      - catalogo_api
+    environment:
+      DB_CONNECTION_STRING: "Server=db_pedidos;Database=db_pedidos;User=root;Password=root_password_segura;"
+      CATALOG_API_URL: "http://catalogo_api:8080"
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5003:8080"
+    restart: always
+
+  # --- API GATEWAY ---
+  api_gateway:
+    build:
+      context: .
+      dockerfile: src/ApiGateway/ApiGateway.Ocelot/Dockerfile
+    container_name: api_gateway
+    depends_on:
+      - identidade_api
+      - catalogo_api
+      - pedidos_api
+    ports:
+      - "80:8080" # Ponto de entrada padrão: A porta 80 da máquina
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    restart: always
+
+volumes:
+  identidade_data:
+  catalogo_data:
+  pedidos_data:
