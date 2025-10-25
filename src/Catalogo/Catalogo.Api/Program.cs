@@ -1,42 +1,24 @@
+using Catalogo.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore; // Adicionar este using
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// ... (Resto da configuração padrão) ...
+
+// --- Início da Configuração do Entity Framework Core ---
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// O GetConnectionString irá buscar a variável de ambiente DB_CONNECTION_STRING
+// que definimos no docker-compose.yml!
+
+builder.Services.AddDbContext<CatalogoDbContext>(options =>
+    options.UseMySql(connectionString,
+                     ServerVersion.AutoDetect(connectionString),
+                     mysqlOptions => mysqlOptions.MigrationsAssembly(typeof(CatalogoDbContext).Assembly.FullName)));
+// --- Fim da Configuração do Entity Framework Core ---
+
+// ... (Resto do código) ...
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
-
-app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+// ... (Resto do código) ...
